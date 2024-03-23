@@ -1,0 +1,47 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+
+
+void decrypt(int nb) {
+    char *buffer = "Q}|u`sfg~sf{}|a3"; // 0x757c7d51 0x67667360 0x7b66737e 0x33617c7d
+    int len;
+    int i = 0;
+
+    len = strlen(buffer);
+    while (i < len) {
+        buffer[i] = buffer[i] ^ nb;
+        i++:
+    }
+
+    if (!strncmp(buffer, "Congratulations!", 17)) {
+        system("/bin/sh");
+        return;
+    } 
+    puts("\nInvalid Password");
+}
+
+void test(int mdp, int total) {
+    int nb = total - mdp;
+    if (nb > 21) {
+	   decrypt(rand());
+    }
+	else {
+		decrypt(nb);
+	}
+	return;
+}
+
+int main(int argc, char *argv[]) {
+    int mdp;
+
+    srand(time(0));
+    puts("\b***********************************");
+    puts("*\t\tlevel03\t\t**");
+    puts("\b***********************************");
+
+    printf("Password:");
+    scanf("%d", &mdp);
+    test(mdp, 322424845); // 0x1337d00d
+}

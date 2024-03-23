@@ -1,0 +1,56 @@
+En analysant le programme avec GDB, on voit que le programme
+comporte une fonction main, une fonction test, et une fonction decrypt.
+La fonction main réalise un scanf pour récupérer un mot de passe.
+Dans la fonction test, ce mot de passe est soustrait à 322424845,
+si le résultat est inférieur à 21, il est envoyé à la fonction decrypt,
+sinon c'est le resultat de la fonction rand() qui sera envoyé à decrypt
+Cette fonction decrypt possede une chaine de caractère : "Q}|u`sfg~sf{}|a3".
+Cette chaine de caractère passe dans une boucle
+qui réalise sur chaque charactère de la chaine un "OU EXCLUSIF" avec le nombre envoyé enargument.
+Une fois l'opération réalisé sur l'ensemble de la chaine, on compare la 
+nouvelle chaine avec la chaine de caractère "Congratulations!"
+Si la comparaison réussi, un system("/bin/sh") est appelé.
+On doit donc trouver le bon nombre qui permettrait de transformer la chaine de caractère :
+"Q}|u`sfg~sf{}|a3" en "Congratulations!"
+Comme l'opération est un OU EXCLUSIF, cela signifie que pour chaque caractère,
+on va comparer les bits du caractère avec ceux du nombres passé en argument.
+Si les bits correpondent, cela sera traduit par un 0, s'ils sont différents, il sera traduit en 1. 
+Ainsi un nouveau nombre est créer, donnant lieu à une nouvelle lettre.
+Par exemple, si on entre comme mot de passe 322424840, le nombre envoyer en argument sera
+322424845 - 322424840 = 5.
+et la première lettre de la chaine de caractère est Q. donc : 
+
+5 = 0x5  = 0000101  
+Q = 0x51 = 1010100
+0x51 = 1010001
+0x5  = 0000101
+||   = 1010100  = 0x54 = T
+
+Nous on veut que le Q se transforme en C 
+Donc on veut que 0x51 se transforme en 0x43:
+0x51 -> 0x43
+1010001  ->  1000011
+Avec un xor, un "ou exclusif", deux bits identique font 0 et deux bits differents font 1.
+Donc pour faire les 1 dans 0x43 (1000011) il faut que notre nombre mystere et 0x51 aient deux bits différents au même endroit
+Inversement, quand il y a un 0, c'est que les bits de nos deux nombre sont identiques.
+
+Si identique -> 0
+Si different -> 1
+
+Q = 0x51 = 1010001
+C = 0x43 = 1000011
+||       = 0010010  = 18 = 0x12
+
+Il faut faire en sorte que 322424845 - notre nombre soit égale à 18 pour réussir a passer le décryptage.
+322424845 - 18 = 322424827
+Notre nombre mystere est 322424827
+
+
+level03@OverRide:~$ ./level03 
+***********************************
+*		level03		**
+***********************************
+Password:322424827
+$ cat /home/users/level04/.pass
+kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+$ 
