@@ -1,0 +1,83 @@
+(gdb) disas main
+Dump of assembler code for function main:
+   0x08048444 <+0>:	push   %ebp
+   0x08048445 <+1>:	mov    %esp,%ebp
+   0x08048447 <+3>:	push   %edi
+   0x08048448 <+4>:	push   %ebx
+   0x08048449 <+5>:	and    $0xfffffff0,%esp
+   0x0804844c <+8>:	sub    $0x90,%esp
+   0x08048452 <+14>:	movl   $0x0,0x8c(%esp)
+   0x0804845d <+25>:	mov    0x80497f0,%eax
+        -> stdin
+   0x08048462 <+30>:	mov    %eax,0x8(%esp)
+   0x08048466 <+34>:	movl   $0x64,0x4(%esp)
+        -> 0x64 = 100
+   0x0804846e <+42>:	lea    0x28(%esp),%eax
+        -> addresse où écrire
+   0x08048472 <+46>:	mov    %eax,(%esp)
+   0x08048475 <+49>:	call   0x8048350 <fgets@plt>
+        -> fgets($esp+0x28, 100, stdin)
+   0x0804847a <+54>:	movl   $0x0,0x8c(%esp)
+        -> place 0 à $esp+0x8c
+   0x08048485 <+65>:	jmp    0x80484d3 <main+143>
+        -> saute à +143
+   0x08048487 <+67>:	lea    0x28(%esp),%eax
+   0x0804848b <+71>:	add    0x8c(%esp),%eax
+        -> va au début de la string qu'on a stocké, et ajoute le nombre de caractère qu'on a déjà traité
+   0x08048492 <+78>:	movzbl (%eax),%eax
+        -> met ce que contient eax(premier caractère de notre string) dans le registre eax
+   0x08048495 <+81>:	cmp    $0x40,%al
+        -> compare ce caractère à 0x40 (64 = @ dans ascii)
+   0x08048497 <+83>:	jle    0x80484cb <main+135>
+        -> si inférieur ou égale saute à +135
+   0x08048499 <+85>:	lea    0x28(%esp),%eax
+   0x0804849d <+89>:	add    0x8c(%esp),%eax
+   0x080484a4 <+96>:	movzbl (%eax),%eax
+   0x080484a7 <+99>:	cmp    $0x5a,%al
+        -> compare à 0x5a (90 = Z dans ascii)
+   0x080484a9 <+101>:	jg     0x80484cb <main+135>
+        -> si supérieur saute à +135
+   0x080484ab <+103>:	lea    0x28(%esp),%eax
+   0x080484af <+107>:	add    0x8c(%esp),%eax
+   0x080484b6 <+114>:	movzbl (%eax),%eax
+   0x080484b9 <+117>:	mov    %eax,%edx
+   0x080484bb <+119>:	xor    $0x20,%edx
+        -> 0x20 = 32 -> string || 32 (ou exclusif)
+   0x080484be <+122>:	lea    0x28(%esp),%eax
+   0x080484c2 <+126>:	add    0x8c(%esp),%eax
+        -> s'aligne sur notre chaine de caractère
+   0x080484c9 <+133>:	mov    %dl,(%eax)
+        -> réécrit sur notre chaine avec le résultat de notre OU EXCLUSIF. ( concrètement va transformer les majuscule en minuscule  -> maj + 32)
+   0x080484cb <+135>:	addl   $0x1,0x8c(%esp)
+        -> ajoute 1 au nombre stocké ici (itère au passage de chaque lettre)
+   0x080484d3 <+143>:	mov    0x8c(%esp),%ebx
+        -> stocke ce nombre dans ebx
+   0x080484da <+150>:	lea    0x28(%esp),%eax
+        -> revient au début de la chaine de caractère
+   0x080484de <+154>:	movl   $0xffffffff,0x1c(%esp)
+        -> met un -1 qq part stocké avant la chaine de caractère
+   0x080484e6 <+162>:	mov    %eax,%edx
+        -> chaine de caractère dans edx
+   0x080484e8 <+164>:	mov    $0x0,%eax
+        -> 0 dans eax
+   0x080484ed <+169>:	mov    0x1c(%esp),%ecx
+        -> -1 dans ecx
+   0x080484f1 <+173>:	mov    %edx,%edi
+   0x080484f3 <+175>:	repnz scas %es:(%edi),%al
+        -> compte le nombre de caractère dans edx
+   0x080484f5 <+177>:	mov    %ecx,%eax
+   0x080484f7 <+179>:	not    %eax
+        -> inverse la valeur obtenu (qui sera négative lorsque le direction flag est différent de 0 -> ecx = -1)
+   0x080484f9 <+181>:	sub    $0x1,%eax
+        -> lui enlève 1 (passage neg to pos)
+   0x080484fc <+184>:	cmp    %eax,%ebx
+   0x080484fe <+186>:	jb     0x8048487 <main+67>
+        -> compare le nombre de caractère dans la chaine à notre nombre qu'on itère à chaque passage, si inférieur, retourne au début de la boucle
+   0x08048500 <+188>:	lea    0x28(%esp),%eax
+        -> début de notre chaine
+   0x08048504 <+192>:	mov    %eax,(%esp)
+   0x08048507 <+195>:	call   0x8048340 <printf@plt>
+        -> printf(str)  -> print directement la variable qui contient notre chaine de caractère
+   0x0804850c <+200>:	movl   $0x0,(%esp)
+   0x08048513 <+207>:	call   0x8048370 <exit@plt>
+End of assembler dump.

