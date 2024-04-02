@@ -1,0 +1,17 @@
+On a ici un programme qui nous demande un login, puis un nombre serial, et enfin exit.
+En ouvrant GDB, on trouve deux fonction principales: le main et auth()
+En lançant avec qq breakpoint, on se heurte rapidement à un problème : il y a une vérification de notre environnement 
+grace à un ptrace.
+De ce fait la lecture du code pas à pas se complique.
+Cependant en plongeant dans l'asm on remarque quelques élément:
+On voit un system(/bin/sh)
+Et on voit la condition pour parvenir à lancer cet appelle system : il faut que le retour de auth == 0
+
+En allant voir dans auth on remarque que les return 1 sont beaucoup nombreux que les return 0.
+Pour qu'il y ai un return 0, il faut remplir une condition que la succession d'opération mathématique sur le login soit égal au nombre serial qu'on aura donné.
+En fait il s'agit simplement d'un hash.
+
+On a deux options alors:
+Soit on décode pas à pas ce que l'asm fait subir à notre Login pour trouver le résultat qu'il faut mettre (cf programme hash.c)
+Soit on trouve un moyen de passer outre la vérification de ptrace.
+
