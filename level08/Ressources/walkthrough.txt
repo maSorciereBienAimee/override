@@ -1,0 +1,88 @@
+On a à la racine, un programme level08 et un dossier backups, qui lui contient un fichier .log
+Le programme demande un fichier en argument : 
+
+$ ./level08 
+Usage: ./level08 filename
+ERROR: Failed to open (null)
+
+Si on lui donne un fichier : 
+$ ./level08 backups/.log 
+ERROR: Failed to open ./backups/backups/.log
+
+Il semble concatener notre chemin avec "./backups"
+
+En analysant plus en détails dans GDB, on se rend compte qu'il y a 2 fopen, et un open :
+un fopen de ./backups/.log en mode écriture.
+un fopen du fichier que l'on envoie en argument en mode lecture
+et un open de "./backups/" + "notre_argument"
+
+On remarque aussi un fgets, qui va lire le document que l'on ouvre en mode lecture (le fichier qu'on envoie en argument),
+et va copier son contenu dans le fichier "./backups/"+"notre_fichier"
+
+Donc c'est plutôt une bonne chose, il suffit d'envoyer le bon dossier à ouvrir pour récuperer le mot de passe du level09.
+
+La difficulté ici va être de réussir à passer la vérification de l'ouverture des fichier à chaque open ou fopen.
+En effet, si un fd se retroyve etre égale à 0 car inexistant, le programme se ferme.
+Il faut donc s'assurer que l'argument que l'on envoie au programme permettra à la fois d'ouvrir des fichiers sans quitter le programme,
+et en même temps d'ouvrir le fichier qui contient notre mot de passe.
+
+Le premier fopen est : fopen("./backups/.log", "w")
+C'est donc un fichier qui existe il n'y aura pas de problème
+
+Le second fopen est : fopen(notre_argument, "r")
+Ce fichier est celui qui sera lu et dont le contenu sera ecrit ailleurs. Ce doit donc être notre /home/users/level09/.pass
+
+Enfin le dernier est open("./backups/" + "notre_argument")
+C'est dans ce fichier que sera écrit notre mot de passe finale. Il faut donc que ce soit un fichier qui existe, et il faut qu'on puisse l'ouvrir facilement.
+
+Le seule dossier où l'on peut creer un fichiers est le dossier /tmp
+
+on va donc créer notre fichier de récupération dans tmp.
+
+On sait aussi que lors de l'écriture de la clé, elle sera écrite dans ./backups/ + notre argument
+
+On va donc créer notre chemin /home/users/level09/.pass dans tmp en le faisant préceder par backups
+Ainsi 
+fopen(notre_argument, "r") = fopen("/home/users/level09/.pass", "r") sera lu
+et open("./backups/"+argument) = open("./backups//home/users/level09/.pass") sera ouvert pour recevoir la clé !
+
+$ cd /tmp
+$ mkdir -p ./backups//home/users/level09/
+$ touch ./backups//home/users/level09/.pass
+$ chmod -R 777 backups
+
+Comme lors de l'écriture, le chemin commence par un ./backups/, il faut qu'on lance le programme depuis /tmp
+
+$ cd /tmp
+$ /home/users/level08/level08 /home/users/level09/.pass
+ERROR: Failed to open ./backups//home/users/level09/.pass
+
+On a une erreur: il ne parvient pas à ouvrir le .pass.
+
+En effet, le dernier open est 
+open("./backups/"+argument, 193, 432)
+En cherchant un peut on apprend que les macro de open sont en octal.
+On convertie, 193 en octal correspond à 0301.
+Ce qui correspond à ces 3 macros réunis:
+#define O_WRONLY             01
+#define O_CREAT                   0100
+#define O_EXCL                   0200   
+
+Or en lisant la doc, on se rend compte open echoue si O_EXCL et O_CREAT sont réunis et que le fichier existe déja.
+
+Il faut donc enlever le fichier .pass pour que le programme le crée lui meme:
+
+$ cd /tmp
+$ rm -rf backups
+$ cd /tmp
+$ mkdir -p ./backups//home/users/level09/
+$ chmod -R 777 backups
+
+Comme lors de l'écriture, le chemin commence par un ./backups/, il faut qu'on lance le programme depuis /tmp
+
+$ cd /tmp
+$ /home/users/level08/level08 /home/users/level09/.pass
+
+
+$ cat /tmp/backups//home/users/level09/.pass
+fjAwpJNs2vvkFLRebEvAQ2hFZ4uQBWfHRsP62d8S
