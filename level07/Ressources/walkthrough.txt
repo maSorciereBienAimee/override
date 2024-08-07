@@ -134,13 +134,23 @@ Decimal      Hexadecimal             Binaire
 4294967296 = 0x00000001 0x00000000 = 00000000000000000000000000000001 00000000000000000000000000000000 -> 0
 4294967297 = 0x00000001 0x00000001 = 00000000000000000000000000000001 00000000000000000000000000000001 -> 1
 
-On remarque dans le code de la fonction store_number:
+Donc si on veut obtenir 114 uniquement avec les bit de poids faible, on a:
+00000000000000000000000000000001 00000000000000000000000001110010 = 4294967410
+
+Sauf que si on entre directement ce nombre qui est superieur au max int, la separation entre bits de poids fort et bit de poids faible se fera aussi au moment de la verification du modulo, puisqu'il est
+deja trop grand. Donc ca reviendrai exactement au meme que de mettre directement 114. Et ca ne passera pas la verification.
+
+Mais on remarque dans le code de la fonction store_number, a la toute fin, au moment de stocker le nombre a l'index indiqué:
    0x080486f9 <+34>:	mov    -0xc(%ebp),%eax
    0x080486fc <+37>:	shl    $0x2,%eax
 Cela permet de stocker le nombre que l'on donne non pas à <début du tableau + index>, mais à <début du tableau + index*4>
 (En effet la taille d'un int est de 4 octets, il faut donc prévoir 4 octets pour chaque nombre stocké)
 
-Donc ce n'est pas à l'index 114 que l'on veut stocker notre nombre mais à 114*4 = 456
+Et cela va nous permettre de passer l'etape de la verification du modulo car cela va nous permettre 
+d'envoyer un nombre inferieur au max_int, mais qui une fois multiplier par 4 a a fin de la fonction sera superieur a max_int, et sera donc ainsi reformater au bon index. 
+
+Donc ce n'est plus à l'index 114 que l'on veut stocker notre nombre mais à 114*4 = 456.
+Il faut que notre nombre envoyé, une fois multiplier par 4, soit equivalent a 456 au niveau des bits de poids faibles.
 
 Il faut donc faire en sorte que une fois que l'on aura passé cette ligne:
    0x080486fc <+37>:	shl    $0x2,%eax
