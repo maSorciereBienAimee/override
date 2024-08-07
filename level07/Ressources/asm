@@ -271,7 +271,7 @@ Dump of assembler code for function store_number:
         -> y soustrait l'index qu'on a envoyé
    0x08048686 <+86>:	test   %edx,%edx
    0x08048688 <+88>:	je     0x8048697 <store_number+103>
-        -> si égale à 0 après ces opération (qui correspondent à un modulo) saute à +103
+        -> si égale à 0 après ces opération (qui correspondent à un modulo 3) saute à +103
    0x0804868a <+90>:	mov    -0x10(%ebp),%eax
         -> prends le nombre que l'on veut stocker
    0x0804868d <+93>:	shr    $0x18,%eax
