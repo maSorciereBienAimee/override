@@ -9,10 +9,10 @@ void log_wrapper(int fd_write, char *log, char *arg)
     int len_254 = strlen(buf) - 254;
     int len = strlen(buf);
     int end;
-    snprintf(buf[len], len_254, arg);
+    snprintf(buf[len], len_254, arg); //snprintf ecrit dans le buffer (1er arg) plutot que dans stdout
     end = strcspn(buf, "\n");
     buf[end] = 0;
-    fprintf(fd_write, "LOG: %s\n", buf);
+    fprintf(fd_write, "LOG: %s\n", buf); //fprintf ecrit dans le file (fd au premier argument) plutot que dans stdout
 }
 
 int main(int argc, char **argv)
