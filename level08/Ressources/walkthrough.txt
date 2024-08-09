@@ -69,6 +69,8 @@ Ce qui correspond à ces 3 macros réunis:
 #define O_EXCL                   0200   
 
 Or en lisant la doc, on se rend compte open echoue si O_EXCL et O_CREAT sont réunis et que le fichier existe déja.
+"S'assurer que cet appel crée le fichier : si cet attribut est spécifié en conjonction avec O_CREAT et si le fichier pathname existe déjà, open() échouera."
+-> https://fr.manpages.org/open/2
 
 Il faut donc enlever le fichier .pass pour que le programme le crée lui meme:
 
