@@ -138,7 +138,7 @@ Dump of assembler code for function main:
    0x0000000000400b90 <+416>:	mov    %rax,%rdi
    0x0000000000400b93 <+419>:	mov    $0x0,%eax
    0x0000000000400b98 <+424>:	callq  0x4007b0 <open@plt>
-          -> open(buffer, 193, 432)
+          -> open(buffer, 193, 432)  = open de ./backups+arg
    0x0000000000400b9d <+429>:	mov    %eax,-0x78(%rbp)
    0x0000000000400ba0 <+432>:	cmpl   $0x0,-0x78(%rbp)
    0x0000000000400ba4 <+436>:	jns    0x400bed <main+509>
