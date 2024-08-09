@@ -99,7 +99,7 @@ Dump of assembler code for function main:
    0x0000000000400b20 <+304>:	movzbl 0xa(%rdx),%edx
           -> prends la suite de backups
    0x0000000000400b24 <+308>:	mov    %dl,0xa(%rax)
-          -> et les mets à la suite de rax, rax = $rbp+ 0x70 = "./backups/\0"
+          -> et les mets à la suite de rax, rax = $rbp+ 0x70 = "./backups/\0" (en gros copie "./backups" a l'addresse rbp+0x70)
    0x0000000000400b27 <+311>:	lea    -0x70(%rbp),%rax
    0x0000000000400b2b <+315>:	movq   $0xffffffffffffffff,-0xa8(%rbp)
    0x0000000000400b36 <+326>:	mov    %rax,%rdx
@@ -128,7 +128,7 @@ Dump of assembler code for function main:
    0x0000000000400b77 <+391>:	mov    %rcx,%rsi
    0x0000000000400b7a <+394>:	mov    %rax,%rdi
    0x0000000000400b7d <+397>:	callq  0x400750 <strncat@plt>
-          -> strncat(buffer ebp-0x70, argv[1], 89)
+          -> strncat(buffer ebp-0x70, argv[1], 89)  -> concatene "./backups" et notre arg
    0x0000000000400b82 <+402>:	lea    -0x70(%rbp),%rax
           -> buffer
    0x0000000000400b86 <+406>:	mov    $0x1b0,%edx
