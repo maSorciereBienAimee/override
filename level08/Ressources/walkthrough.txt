@@ -68,7 +68,9 @@ Ce qui correspond à ces 3 macros réunis:
 #define O_CREAT                   0100
 #define O_EXCL                   0200   
 
-(voir https://stackoverflow.com/questions/22008229/bitwise-or-in-linux-open-flags et
+(voir 
+https://stackoverflow.com/questions/22008229/bitwise-or-in-linux-open-flags
+et
 https://sites.uclouvain.be/SystInfo/usr/include/bits/fcntl.h.html)
 
 Or en lisant la doc, on se rend compte open echoue si O_EXCL et O_CREAT sont réunis et que le fichier existe déja.
