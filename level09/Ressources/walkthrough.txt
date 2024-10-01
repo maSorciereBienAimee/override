@@ -19,18 +19,18 @@ On comprend assez vite qu'il va falloir faire un overflow quelque part pour réu
 On cherche donc les moyens de faire un overflow, malheureusement le seul strcpy est protégé par une taille, c'est un strncpy.
 Mais on voit que la taille qui lui ai donné en limite à ce strncpy est stockée en mémoire:
    0x00000000000009a9 <+119>:	mov    0xb4(%rax),%eax
-Il y a peut être donc un moyen de modifier ce nombre.
+Il correspond a 140, et comme il est stocké en memoire, il y a peut être un moyen de d'avoir faire un overflow pour modifier ce nombre.
 
 En effet, en observant un peu plus dans gdb, on comprend qu'on a une structure de données.
 Cette structure de données va être rempli au fur et à mesure du programme.
 On comprend dans handle msg que les données de la structure se suivent dans la mémoire :
    0x00000000000008cb <+11>:	lea    -0xc0(%rbp),%rax
-        -> prend l'addresse rbp-0xc0 (rbp-192) = début de la structure, là ou sera stocké ls msg
+        -> prend l'addresse rbp-0xc0 (rbp-192) = début de la structure, là ou sera stocké le msg
    0x00000000000008d2 <+18>:	add    $0x8c,%rax
-        -> ajoute 140 a rax. (140 octet du msg) on est maintenant a rbp-0x34 (rbp-52), c'est le début de username
+        -> ajoute 140 a rax. (donc 140 octet apres le debut du stockage msg) on est maintenant a rbp-0x34 (rbp-52), c'est le début de username
    ...
    0x00000000000008ff <+63>:	movl   $0x8c,-0xc(%rbp)
-       -> place 140 à l'addresse rbp-0xc (rbp-12) c'est à dire 40 octets après rbp-0x34, ce nombre se trouve juste après de username
+       -> place 140 à l'addresse rbp-0xc (rbp-12) c'est à dire 40 octets après rbp-0x34, donc ce nombre se trouve juste après le stockage de username
        
 En résumé, dans handle_msg :
 On a une structure qui commence a rbp-0xc0,
@@ -50,11 +50,11 @@ ______________________________
 |____________________________|
 
 Le nombre qui est donnée à notre strncpy correspond au nombre stocké dans notre structure juste après le stockage de username. 
-Si on déborde de username sur l'int pour mettre un nombre plus grand que 140, le strncpy sera limité par ce ouveau nombre plus grand, et peut être qu'on arrivera à faire un segfault.
+Si on déborde de username sur l'int pour mettre un nombre plus grand que 140, le strncpy sera limité par ce nouveau nombre plus grand, et peut être qu'on arrivera à faire un segfault.
 
 Il y a une protection qui copie notre username[i] tant que i <= 40.
 Il y a 40 place dans notre buffer avant d'arriver sur notre nombre.
-Sauf que i
+Sauf que i commence a 0, et i doit etre <= 40, donc inferieur OU EGAL à 40. Ce qui signifie qu'on peut copier 41 octets dans username.
 
 --------------------------------------------
 |   ~Welcome to l33t-m$n ~    v1337        |
@@ -70,7 +70,7 @@ Breakpoint 2, 0x00005555555549c6 in set_msg ()
 
 Bingo, en mettant 41 "A", l'addresse ou était sensé etre stocké le nombre max 140 contient maintenant 0x41,
 ce qui correspond à 65 en decimal.
-On pourra donc copier maintenant, le nombre peut donc bien être remplacé par un overflow.
+On pourra donc bien remplacé le nombre 140 par un autre grace à un overflow.
 On va mettre le nombre le plus grand possible : 0xff, c'est a dire 255
 
 Ensuite on va chercher une addresse return a override dans les 255 octets qui suivent le msg.

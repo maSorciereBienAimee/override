@@ -21,7 +21,7 @@ Par exemple, si on entre comme mot de passe 322424840, le nombre envoyer en argu
 et la première lettre de la chaine de caractère est Q. donc : 
 
 5 = 0x5  = 0000101  
-Q = 0x51 = 1010100
+Q = 0x51 = 1010001
 0x51 = 1010001
 0x5  = 0000101
 ||   = 1010100  = 0x54 = T

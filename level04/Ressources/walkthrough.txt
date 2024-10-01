@@ -14,8 +14,6 @@ Pour suivre le processus enfant dans gdb, on utilise :
 
 (gdb) set follow-fork-mode child
 (gdb) run
-The program being debugged has been started already.
-Start it from the beginning? (y or n) y
 Starting program: /home/users/level04/level04 
 [New process 1883]
 Give me some shellcode, k

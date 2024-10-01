@@ -22,7 +22,7 @@ et va copier son contenu dans le fichier "./backups/"+"notre_fichier"
 Donc c'est plutôt une bonne chose, il suffit d'envoyer le bon dossier à ouvrir pour récuperer le mot de passe du level09.
 
 La difficulté ici va être de réussir à passer la vérification de l'ouverture des fichier à chaque open ou fopen.
-En effet, si un fd se retroyve etre égale à 0 car inexistant, le programme se ferme.
+En effet, si un fd se retrouve etre égale à 0 car inexistant, le programme se ferme.
 Il faut donc s'assurer que l'argument que l'on envoie au programme permettra à la fois d'ouvrir des fichiers sans quitter le programme,
 et en même temps d'ouvrir le fichier qui contient notre mot de passe.
 

@@ -7,7 +7,7 @@ Cependant en plongeant dans l'asm on remarque quelques élément:
 On voit un system(/bin/sh)
 Et on voit la condition pour parvenir à lancer cet appelle system : il faut que le retour de auth == 0
 
-En allant voir dans auth on remarque que les return 1 sont beaucoup nombreux que les return 0.
+En allant voir dans auth on remarque que les return 1 sont beaucoup plus nombreux que les return 0.
 Pour qu'il y ai un return 0, il faut remplir une condition que la succession d'opération mathématique sur le login soit égal au nombre serial qu'on aura donné.
 En fait il s'agit simplement d'un hash.
 
@@ -15,7 +15,7 @@ On a deux options alors:
 Soit on décode pas à pas ce que l'asm fait subir à notre Login pour trouver le résultat qu'il faut mettre (cf programme hash.c)
 Soit on trouve un moyen de passer outre la vérification de ptrace.
 
-Le décodage du hash est plus ou moins possible, mais peut évident, il y a quelque piege comme le mul, qui va stocker une partie du résultat dans un registre, et l'autre dans un autre registre.
+Le décodage du hash est plus ou moins possible, mais peu évident, il y a quelque piege comme le mul, qui va stocker une partie du résultat dans un registre, et l'autre dans un autre registre.
 Le détails de la description du hash se trouve dans hash.c.
 
 Le moyen le plus simple est de passer la vérification de ptrace. En effet, le hash de notre login est stocké en mémoire à $ebp-0x10.
